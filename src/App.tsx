@@ -23,9 +23,18 @@ export default function App() {
 
   // Database lists
   const [colleges, setColleges] = useState<College[]>([]);
-  const [savedColleges, setSavedColleges] = useState<College[]>([]);
-  const [savedComparisons, setSavedComparisons] = useState<SavedComparison[]>([]);
-  const [compareBasket, setCompareBasket] = useState<College[]>([]);
+  const [savedColleges, setSavedColleges] = useState<College[]>(() => {
+    const saved = localStorage.getItem('edupath_saved_colleges');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [savedComparisons, setSavedComparisons] = useState<SavedComparison[]>(() => {
+    const saved = localStorage.getItem('edupath_saved_comparisons');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [compareBasket, setCompareBasket] = useState<College[]>(() => {
+    const saved = localStorage.getItem('edupath_compare_basket');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   // Selection modal inside comparison page
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
@@ -164,18 +173,29 @@ export default function App() {
     }
 
     const isCurrentlySaved = savedColleges.some(sc => sc.id === collegeId);
+    let newSavedList: College[];
+
     try {
       if (isCurrentlySaved) {
-        // optimistically update local bookmark list
-        setSavedColleges(prev => prev.filter(c => c.id !== collegeId));
-        await api.toggleSaveCollege(collegeId, true);
+        newSavedList = savedColleges.filter(c => c.id !== collegeId);
+        setSavedColleges(newSavedList);
+        // Backup save to server (might fail on Vercel, which is why we use local persistence)
+        api.toggleSaveCollege(collegeId, true).catch(() => { });
       } else {
         const found = colleges.find(c => c.id === collegeId) || await api.getCollegeById(collegeId);
         if (found) {
-          setSavedColleges(prev => [...prev, found]);
+          newSavedList = [...savedColleges, found];
+          setSavedColleges(newSavedList);
+        } else {
+          newSavedList = savedColleges;
         }
-        await api.toggleSaveCollege(collegeId, false);
+        api.toggleSaveCollege(collegeId, false).catch(() => { });
       }
+
+      // Persist to local storage
+      localStorage.setItem('edupath_saved_colleges', JSON.stringify(newSavedList));
+
+      // Optionally sync with server
       loadUserData();
     } catch (err: any) {
       console.error('Error toggling college pin', err);
@@ -185,15 +205,20 @@ export default function App() {
   // Handle basket additions for comparison side-by-side
   function handleCompareBasketToggle(college: College) {
     const index = compareBasket.findIndex(c => c.id === college.id);
+    let newBasket: College[];
+
     if (index > -1) {
-      setCompareBasket(prev => prev.filter(c => c.id !== college.id));
+      newBasket = compareBasket.filter(c => c.id !== college.id);
     } else {
       if (compareBasket.length >= 3) {
         alert('You can compare a maximum of 3 colleges simultaneously.');
         return;
       }
-      setCompareBasket(prev => [...prev, college]);
+      newBasket = [...compareBasket, college];
     }
+
+    setCompareBasket(newBasket);
+    localStorage.setItem('edupath_compare_basket', JSON.stringify(newBasket));
   }
 
   // Save current compare basket to cloud DB
@@ -209,13 +234,41 @@ export default function App() {
 
     setSavingComparison(true);
     try {
-      await api.saveComparison(compareBasket.map(c => c.id));
+      // Mocked comparison record for local persistence
+      const newComp: SavedComparison = {
+        id: `comp-${Date.now()}`,
+        collegeIds: compareBasket.map(c => c.id),
+        colleges: [...compareBasket],
+        savedAt: new Date().toISOString()
+      };
+
+      const newCompList = [newComp, ...savedComparisons];
+      setSavedComparisons(newCompList);
+      localStorage.setItem('edupath_saved_comparisons', JSON.stringify(newCompList));
+
+      // Backup save to server
+      api.saveComparison(compareBasket.map(c => c.id)).catch(() => { });
+
       alert('Comparison saved successfully inside your user center!');
       loadUserData();
     } catch (err: any) {
       alert(err.message || 'Failed to preserve comparison attributes.');
     } finally {
       setSavingComparison(false);
+    }
+  }
+
+  // Delete saved comparison lists
+  async function handleDeleteComparison(compId: string) {
+    try {
+      const newCompList = savedComparisons.filter(c => c.id !== compId);
+      setSavedComparisons(newCompList);
+      localStorage.setItem('edupath_saved_comparisons', JSON.stringify(newCompList));
+
+      api.deleteComparison(compId).catch(() => { });
+      loadUserData();
+    } catch (err: any) {
+      console.error('Failed to remove saved comparison item', err);
     }
   }
 
@@ -237,15 +290,7 @@ export default function App() {
     }
   }
 
-  // Delete saved comparison lists
-  async function handleDeleteComparison(compId: string) {
-    try {
-      await api.deleteComparison(compId);
-      loadUserData();
-    } catch (err: any) {
-      console.error('Failed to remove saved comparison item', err);
-    }
-  }
+
 
   function handleResetFilters() {
     setSearchTerm('');
