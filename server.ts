@@ -388,8 +388,11 @@ IMPORTANT:
 // ============================================
 
 async function startServer() {
-  if (process.env.NODE_ENV !== "production") {
+  const isProd = process.env.NODE_ENV === 'production' || !!process.env.VERCEL;
+
+  if (!isProd) {
     // Development mode
+    console.log('Detected development mode. Initializing Vite...');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -418,10 +421,22 @@ async function startServer() {
     }
   }
 
-  app.listen(Number(PORT), "0.0.0.0", () => {
-    console.log(`EduPath Fullstack Server listening on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  // Global Error Handler
+  app.use((err: any, req: any, res: any, next: any) => {
+    console.error('SERVER ERROR:', err.stack);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: err.message,
+      path: req.path
+    });
   });
+
+  if (!process.env.VERCEL) {
+    app.listen(Number(PORT), "0.0.0.0", () => {
+      console.log(`EduPath Fullstack Server listening on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  }
 }
 
 // Start server only if not running on Vercel
