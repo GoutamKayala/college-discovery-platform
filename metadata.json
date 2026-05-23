@@ -1,0 +1,6 @@
+{
+  "name": "College Discovery Platform",
+  "description": "A comprehensive college listing, search, comparison, and predictor platform, featuring realistic Indian universities, secure authentication, and a Gemini AI educational counselor.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
