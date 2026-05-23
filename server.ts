@@ -27,8 +27,8 @@ import {
 // Load initial DB to ensure folders are created and seeded on load
 loadDatabase();
 
-const app = express();
-const PORT = 3000;
+export const app = express();
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
@@ -171,6 +171,11 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
       email: user.email
     }
   });
+});
+
+// Health Check for Deployment Validation
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString(), env: process.env.NODE_ENV || 'development' });
 });
 
 // 2. College Search and Filtering API
@@ -400,15 +405,29 @@ async function startServer() {
     console.log('Initiated Vite Middleware.');
   } else {
     // Production mode
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
+    const distPath = path.resolve(process.cwd(), 'dist');
+    console.log(`Serving static files from: ${distPath}`);
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath));
+      app.get('*', (req, res) => {
+        const indexPath = path.join(distPath, 'index.html');
+        if (fs.existsSync(indexPath)) {
+          res.sendFile(indexPath);
+        } else {
+          res.status(404).send('Production build not found (index.html missing). Please run npm run build.');
+        }
+      });
+    } else {
+      console.warn(`Warning: dist folder not found at ${distPath}. Static serving might fail.`);
+      app.get('*', (req, res) => {
+        res.status(404).send('Production build not found (dist folder missing). Please run npm run build.');
+      });
+    }
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`EduPath Fullstack Server listening on http://localhost:${PORT}`);
+  app.listen(Number(PORT), "0.0.0.0", () => {
+    console.log(`EduPath Fullstack Server listening on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 }
 

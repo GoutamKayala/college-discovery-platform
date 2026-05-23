@@ -85,6 +85,8 @@ function saveDatabase(data: DatabaseSchema) {
   }
 }
 
+
+
 // Generate Mock Colleges Seeds
 const INITIAL_COLLEGES: College[] = [
   {
@@ -1524,17 +1526,17 @@ function enrichStaticColleges(colleges: College[]): College[] {
     // 2. Add extra state entrance test cutoffs (skip national government institutes)
     const currentExams = c.predictorData.map(p => p.exam.toUpperCase());
     const extraData = [...c.predictorData];
-    
+
     const nameLowerForNational = c.name.toLowerCase();
-    const isNationalGovtCollege = nameLowerForNational.includes('iit ') || 
-                                  nameLowerForNational.includes('nit ') || 
-                                  nameLowerForNational.includes('iiit ') || 
-                                  nameLowerForNational.includes('- tirupati') || 
-                                  nameLowerForNational.includes('tadepalligudem') || 
-                                  nameLowerForNational.includes('sri city') || 
-                                  nameLowerForNational.includes('kurnool') || 
-                                  nameLowerForNational.includes('indian institute') || 
-                                  nameLowerForNational.includes('national institute');
+    const isNationalGovtCollege = nameLowerForNational.includes('iit ') ||
+      nameLowerForNational.includes('nit ') ||
+      nameLowerForNational.includes('iiit ') ||
+      nameLowerForNational.includes('- tirupati') ||
+      nameLowerForNational.includes('tadepalligudem') ||
+      nameLowerForNational.includes('sri city') ||
+      nameLowerForNational.includes('kurnool') ||
+      nameLowerForNational.includes('indian institute') ||
+      nameLowerForNational.includes('national institute');
 
     if ((c.state === "Telangana" || c.state === "Andhra Pradesh") && !isNationalGovtCollege) {
       if (!currentExams.includes('EMCET') && !currentExams.includes('EAMCET')) {
@@ -1577,7 +1579,7 @@ function enrichStaticColleges(colleges: College[]): College[] {
           exam: "JELET",
           minRank: Math.floor(5 + offset),
           maxRank: Math.floor(80 + offset * 5)
-         });
+        });
       }
     } else if (c.state === "Karnataka" && !isNationalGovtCollege) {
       if (!currentExams.includes('KCET')) {
@@ -1605,7 +1607,7 @@ function autoGenerateColleges(existing: College[]): College[] {
 
   const prefixes = ["PSG College", "Thapar Institute", "Amity University", "Kalinga Institute", "Symbiosis Institute", "Chandigarh University", "Lovely Professional University", "Dhirubhai Ambani Institute", "Shiv Nadar University", "RV College of Engineering", "PE Society’s Christ University", "Nirma Institute of Technology", "Northeastern Hill University", "Indian Institute of Science Education", "Satyabhama University", "SASTRA Deemed University", "PEC University", "Tezpur Central University", "Vishwavidyalaya Institute", "Netaji Subhas Institute"];
   const cities = ["Coimbatore", "Patiala", "Noida", "Bhubaneswar", "Pune", "Chandigarh", "Jalandhar", "Gandhinagar", "Greater Noida", "Bangalore", "Bangalore", "Ahmedabad", "Shillong", "Bhopal", "Chennai", "Thanjavur", "Chandigarh", "Tezpur", "Jaipur", "Kochi"];
-  
+
   for (let i = 0; i < countNeeded; i++) {
     const state = STATES[i % STATES.length];
     const city = cities[i % cities.length];
@@ -1613,7 +1615,7 @@ function autoGenerateColleges(existing: College[]): College[] {
     const uniqueId = `col-auto-${i}`;
     const fees = Math.floor(80000 + (Math.random() * 400000));
     const rating = parseFloat((3.8 + (Math.random() * 0.9)).toFixed(1));
-    
+
     const isAutonomous = prefix.toLowerCase().includes("psg") || prefix.toLowerCase().includes("thapar") || prefix.toLowerCase().includes("dhirubhai") || prefix.toLowerCase().includes("rv college") || prefix.toLowerCase().includes("nirma");
     const isPrivate = prefix.toLowerCase().includes("amity") || prefix.toLowerCase().includes("lovely") || prefix.toLowerCase().includes("srm") || prefix.toLowerCase().includes("symbiosis") || prefix.toLowerCase().includes("kalinga") || prefix.toLowerCase().includes("chandigarh") || prefix.toLowerCase().includes("christ");
     const ownershipType: 'Government' | 'Private' | 'Autonomous' = isAutonomous ? "Autonomous" : (isPrivate ? "Private" : "Government");
@@ -1702,19 +1704,19 @@ let inMemoryDb: DatabaseSchema = {
 
 // Check and load from file system
 export function loadDatabase(): DatabaseSchema {
+  // Only load, never save here to avoid infinite loops with watchers
   try {
     if (fs.existsSync(DB_FILE)) {
       const content = fs.readFileSync(DB_FILE, 'utf-8');
       inMemoryDb = JSON.parse(content);
-      // Ensure colleges are always present and up-to-date with dynamic schemas
+      // Ensure colleges are always present
       inMemoryDb.colleges = ALL_COLLEGES;
-      saveDatabase(inMemoryDb);
     } else {
+      // If file doesn't exist, use memory db
       inMemoryDb.colleges = ALL_COLLEGES;
-      saveDatabase(inMemoryDb);
     }
   } catch (err) {
-    console.error('Error loading db.json, using in-memory', err);
+    console.error('Error loading db.json, using in-memory seeds', err);
     inMemoryDb.colleges = ALL_COLLEGES;
   }
   return inMemoryDb;
@@ -1737,9 +1739,9 @@ export function getColleges(filters: {
 
   const q = filters.q?.toLowerCase().trim();
   if (q) {
-    list = list.filter(c => 
-      c.name.toLowerCase().includes(q) || 
-      c.location.toLowerCase().includes(q) || 
+    list = list.filter(c =>
+      c.name.toLowerCase().includes(q) ||
+      c.location.toLowerCase().includes(q) ||
       c.description.toLowerCase().includes(q)
     );
   }
@@ -1889,7 +1891,7 @@ export function saveComparison(userId: string, collegeIds: string[]) {
   // Filter duplicates
   const key = collegeIds.sort().join(',');
   const exists = db.savedComparisons.some(sc => sc.userId === userId && sc.collegeIds.sort().join(',') === key);
-  
+
   if (exists) return { success: true, message: 'Comparison already saved' };
 
   db.savedComparisons.push({
@@ -1938,7 +1940,7 @@ export function addReview(collegeId: string, userName: string, rating: number, c
   };
 
   college.reviews.push(newReview);
-  
+
   // Recalculate college average rating
   const total = college.reviews.reduce((acc, r) => acc + r.rating, 0);
   college.rating = parseFloat((total / college.reviews.length).toFixed(1));
@@ -1950,7 +1952,7 @@ export function addReview(collegeId: string, userName: string, rating: number, c
 // Predictor mapping
 export function predictColleges(exam: string, rank: number) {
   const db = loadDatabase();
-  
+
   // Mapping state-wise exams to their respective states to enforce strict local relevance
   const EXAM_STATE_MAPPING: Record<string, string[]> = {
     'MHT-CET': ['Maharashtra'],
@@ -1986,7 +1988,7 @@ export function predictColleges(exam: string, rank: number) {
     const diff = entry.maxRank - rank;
     const range = entry.maxRank - entry.minRank || 1000;
     let probability: 'High' | 'Medium' | 'Low' = 'Low';
-    
+
     if (rank <= entry.minRank) probability = 'High';
     else if (diff > (range * 0.3)) probability = 'Medium';
     else probability = 'Low';
