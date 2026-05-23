@@ -36,14 +36,7 @@ app.use(express.json());
 let ai: GoogleGenAI | null = null;
 if (process.env.GEMINI_API_KEY) {
   try {
-    ai = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        }
-      }
-    });
+    ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     console.log('Gemini client initialized successfully.');
   } catch (err) {
     console.error('Failed to initialize Gemini Client', err);

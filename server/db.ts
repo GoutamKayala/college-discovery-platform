@@ -1,5 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 
 // Define TS Interfaces for DB Schema
@@ -70,7 +74,7 @@ interface DatabaseSchema {
   savedComparisons: SavedComparison[];
 }
 
-const DB_DIR = path.join(process.cwd(), 'data');
+const DB_DIR = path.resolve(__dirname, '..', 'data');
 const DB_FILE = path.join(DB_DIR, 'db.json');
 
 // Helper to write database
