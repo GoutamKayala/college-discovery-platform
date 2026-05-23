@@ -3,7 +3,8 @@ import fs from 'fs';
 import express from 'express';
 import path from 'path';
 import crypto from 'crypto';
-import { createServer as createViteServer } from 'vite';
+// Removed top-level vite import for Vercel stability
+// import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import {
   getColleges,
@@ -25,7 +26,11 @@ import {
 
 
 // Load initial DB to ensure folders are created and seeded on load
-loadDatabase();
+try {
+  loadDatabase();
+} catch (e) {
+  console.error("Critical: loadDatabase failed on startup", e);
+}
 
 export const app = express();
 const PORT = process.env.PORT || 3000;
@@ -393,6 +398,11 @@ async function startServer() {
   if (!isProd) {
     // Development mode
     console.log('Detected development mode. Initializing Vite...');
+
+    // Dynamic import for Vite to avoid loading it in production/Vercel
+    // @ts-ignore
+    const { createServer: createViteServer } = await import('vite');
+
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
