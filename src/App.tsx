@@ -194,9 +194,6 @@ export default function App() {
 
       // Persist to local storage
       localStorage.setItem('edupath_saved_colleges', JSON.stringify(newSavedList));
-
-      // Optionally sync with server
-      loadUserData();
     } catch (err: any) {
       console.error('Error toggling college pin', err);
     }
